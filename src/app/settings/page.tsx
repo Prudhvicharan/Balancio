@@ -104,11 +104,10 @@ type FormScreen = 'form' | 'confirmSignup' | 'confirmReset';
 
 function SettingsContent() {
   const searchParams = useSearchParams();
-  const { friends, transactions, replaceAll } = useStore();
+  const { friends, transactions, replaceAll, user: authUser, authLoaded } = useStore();
   const { toast } = useToast();
 
   // Auth
-  const [authUser, setAuthUser] = useState<{ id: string; email: string } | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [formScreen, setFormScreen] = useState<FormScreen>('form');
   const [email, setEmail] = useState('');
@@ -117,24 +116,10 @@ function SettingsContent() {
   const [formError, setFormError] = useState<string | null>(null);
   // Sentinel from signIn so we can show "resend" action
   const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
 
   // Sync
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
-  const userIdRef = useRef<string | null>(null);
-
-  // ── Init ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-  
-    // Safety net: force-disable the loading spinner after 2 seconds
-    // just in case Supabase's local storage locks up and onAuthStateChange hangs.
-    const safetyTimer = setTimeout(() => {
-      setCheckingSession(false);
-    }, 2000);
-    
-    return () => clearTimeout(safetyTimer);
-  }, []);
 
   // ── URL error param ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -143,30 +128,7 @@ function SettingsContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Auth state listener ────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!supabase) {
-      setCheckingSession(false);
-      return;
-    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-        const u = session.user;
-        setAuthUser({ id: u.id, email: u.email ?? '' });
-        userIdRef.current = u.id;
-      }
-      if (event === 'SIGNED_OUT') {
-        setAuthUser(null);
-        userIdRef.current = null;
-        setLastSynced(null);
-      }
-      // Guaranteed to fire on mount via INITIAL_SESSION
-      setCheckingSession(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   // ── Reset form errors when mode changes ───────────────────────────────────
   const switchMode = (mode: AuthMode) => {
@@ -177,7 +139,7 @@ function SettingsContent() {
 
   // ── Manual sync ───────────────────────────────────────────────────────────
   const handleSyncNow = useCallback(async (userId?: string) => {
-    const uid = userId ?? userIdRef.current;
+    const uid = userId ?? authUser?.id;
     if (!uid) return;
     setSyncing(true);
     try {
@@ -350,7 +312,7 @@ function SettingsContent() {
       <main className="flex-1 px-4 py-6 pb-safe space-y-4">
 
         {/* ── Loading ──────────────────────────────────────────────────────── */}
-        {checkingSession ? (
+        {!authLoaded ? (
           <div className="flex items-center justify-center py-20">
             <svg className="animate-spin w-6 h-6 text-[var(--accent-light)]" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

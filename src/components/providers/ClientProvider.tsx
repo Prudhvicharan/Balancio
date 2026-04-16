@@ -64,13 +64,13 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === 'INITIAL_SESSION' && !userId) {
+        clearAll();
         setAuthLoaded(true);
       }
     });
 
     return () => subscription.unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, router]);
+  }, []);
 
   // ── Auto-sync mutations to cloud ───────────────────────────────────────────
   useEffect(() => {
