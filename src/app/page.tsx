@@ -63,9 +63,12 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-[var(--bg)]/80 backdrop-blur-xl border-b border-[var(--border-light)] px-4 pt-12 pb-3">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold gradient-text">Balancio</h1>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5">Smart debt tracker</p>
+          <div className="flex items-center gap-3">
+            <img src="/apple-touch-icon.png" alt="Balancio Icon" className="w-9 h-9 rounded-xl shadow-sm" />
+            <div>
+              <h1 className="text-2xl font-bold gradient-text">Balancio</h1>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">Smart debt tracker</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Link
@@ -181,9 +184,11 @@ function LandingPage() {
       {/* Header */}
       <header className="flex justify-between items-center z-10 max-w-lg mx-auto w-full">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shadow-[0_0_15px_rgba(124,106,247,0.4)]">
-            B
-          </div>
+          <img 
+            src="/apple-touch-icon.png" 
+            alt="Balancio Icon" 
+            className="w-8 h-8 rounded-xl shadow-[0_0_15px_rgba(124,106,247,0.4)]" 
+          />
           <span className="font-bold text-xl text-[var(--text-primary)] tracking-tight">Balancio</span>
         </div>
         <Link href="/settings">
