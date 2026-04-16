@@ -26,6 +26,7 @@ interface FriendModalProps {
 
 export function FriendModal({ open, onClose, friend }: FriendModalProps) {
   const { addFriend, updateFriend } = useStore();
+  const friends = useStore((s) => s.friends);
   const { toast } = useToast();
   const isEdit = !!friend;
 
@@ -33,6 +34,7 @@ export function FriendModal({ open, onClose, friend }: FriendModalProps) {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -46,6 +48,18 @@ export function FriendModal({ open, onClose, friend }: FriendModalProps) {
   }, [open, friend, reset]);
 
   const onSubmit = (data: FormData) => {
+    // Check for duplicates (case insensitive)
+    const duplicate = friends.some(
+      (f) =>
+        f.name.trim().toLowerCase() === data.name.trim().toLowerCase() &&
+        f.id !== friend?.id
+    );
+
+    if (duplicate) {
+      setError('name', { type: 'manual', message: 'A contact with this name already exists' });
+      return;
+    }
+
     if (isEdit) {
       updateFriend(friend.id, data);
       toast('Contact updated');

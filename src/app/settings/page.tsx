@@ -128,21 +128,14 @@ function SettingsContent() {
   useEffect(() => {
     const saved = localStorage.getItem('balancio-last-synced');
     if (saved) setLastSynced(saved);
-
-    getSession()
-      .then((session) => {
-        if (session?.user) {
-          const u = session.user;
-          setAuthUser({ id: u.id, email: u.email ?? '' });
-          userIdRef.current = u.id;
-        }
-      })
-      .catch((err) => {
-        console.error('[Balancio] Error fetching session:', err);
-      })
-      .finally(() => {
-        setCheckingSession(false);
-      });
+  
+    // Safety net: force-disable the loading spinner after 2 seconds
+    // just in case Supabase's local storage locks up and onAuthStateChange hangs.
+    const safetyTimer = setTimeout(() => {
+      setCheckingSession(false);
+    }, 2000);
+    
+    return () => clearTimeout(safetyTimer);
   }, []);
 
   // ── URL error param ────────────────────────────────────────────────────────
@@ -154,7 +147,11 @@ function SettingsContent() {
 
   // ── Auth state listener ────────────────────────────────────────────────────
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      setCheckingSession(false);
+      return;
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         const u = session.user;
@@ -166,7 +163,10 @@ function SettingsContent() {
         userIdRef.current = null;
         setLastSynced(null);
       }
+      // Guaranteed to fire on mount via INITIAL_SESSION
+      setCheckingSession(false);
     });
+
     return () => subscription.unsubscribe();
   }, []);
 
