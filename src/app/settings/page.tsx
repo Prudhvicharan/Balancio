@@ -104,7 +104,7 @@ type FormScreen = 'form' | 'confirmSignup' | 'confirmReset';
 
 function SettingsContent() {
   const searchParams = useSearchParams();
-  const { friends, transactions, replaceAll, user: authUser, authLoaded } = useStore();
+  const { friends, transactions, replaceAll, user: authUser, authLoaded, clearAll } = useStore();
   const { toast } = useToast();
 
   // Auth
@@ -272,8 +272,16 @@ function SettingsContent() {
 
   // ── Sign Out ───────────────────────────────────────────────────────────────
   const handleSignOut = async () => {
-    await signOut();
-    // ClientProvider.SIGNED_OUT clears local state.
+    // Optimistic offline-safe logout: Instantly purge local memory so the UI logs out,
+    // even if the user has a poor connection or Supabase requests are hanging.
+    clearAll();
+    
+    try {
+      await signOut();
+    } catch (err) {
+      console.warn('Sign out network request failed', err);
+    }
+    
     toast('Signed out');
   };
 
