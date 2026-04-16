@@ -104,7 +104,7 @@ type FormScreen = 'form' | 'confirmSignup' | 'confirmReset';
 
 function SettingsContent() {
   const searchParams = useSearchParams();
-  const { friends, transactions, exportData, replaceAll } = useStore();
+  const { friends, transactions, replaceAll } = useStore();
   const { toast } = useToast();
 
   // Auth
@@ -126,8 +126,6 @@ function SettingsContent() {
 
   // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const saved = localStorage.getItem('balancio-last-synced');
-    if (saved) setLastSynced(saved);
   
     // Safety net: force-disable the loading spinner after 2 seconds
     // just in case Supabase's local storage locks up and onAuthStateChange hangs.
@@ -210,7 +208,6 @@ function SettingsContent() {
       }
       const now = new Date().toISOString();
       setLastSynced(now);
-      localStorage.setItem('balancio-last-synced', now);
       toast('All caught up!');
     } catch {
       toast('Sync failed — check your connection', 'error');
@@ -318,18 +315,6 @@ function SettingsContent() {
     toast('Signed out');
   };
 
-  // ── Export ─────────────────────────────────────────────────────────────────
-  const handleExport = () => {
-    const data = exportData();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `balancio-${format(new Date(), 'yyyy-MM-dd')}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast('Backup downloaded');
-  };
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const totalOutstanding = friends.reduce((sum, f) => {
@@ -436,37 +421,7 @@ function SettingsContent() {
                 </Button>
               </div>
             </div>
-
-            {/* Export — compact */}
-            <button
-              onClick={handleExport}
-              disabled={friends.length === 0}
-              className={cn(
-                'w-full flex items-center gap-3 p-4 rounded-xl border text-left transition-all',
-                'bg-[var(--bg-card)] border-[var(--border)]',
-                'hover:border-[var(--accent)] hover:bg-[var(--bg-card-hover)]',
-                'disabled:opacity-40 disabled:pointer-events-none'
-              )}
-            >
-              <div className="w-9 h-9 rounded-xl bg-[var(--green-dim)] border border-[color-mix(in_srgb,var(--green)_20%,transparent)] flex items-center justify-center shrink-0">
-                <Download className="w-4 h-4 text-[var(--green)]" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-[var(--text-primary)]">Download my data</p>
-                <p className="text-xs text-[var(--text-muted)]">Export a local JSON backup</p>
-              </div>
-            </button>
           </>
-
-        ) : !isSupabaseConfigured ? (
-          /* ── Cloud not configured ── */
-          <div className="glass p-5 text-center space-y-3">
-            <Cloud className="w-8 h-8 text-[var(--text-muted)] mx-auto" />
-            <p className="text-sm font-medium text-[var(--text-primary)]">Cloud sync unavailable</p>
-            <p className="text-xs text-[var(--text-secondary)]">
-              Your data is saved locally on this device.
-            </p>
-          </div>
 
         ) : formScreen === 'confirmSignup' ? (
           /* ── Confirm signup ── */

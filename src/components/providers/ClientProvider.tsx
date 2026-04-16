@@ -13,10 +13,14 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { supabase, pullFromCloud, pushToCloud } from '@/lib/supabase';
 import { useStore } from '@/stores/useStore';
 
 export function ClientProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const { replaceAll, clearAll } = useStore();
   const friends = useStore((s) => s.friends);
   const transactions = useStore((s) => s.transactions);
@@ -36,26 +40,13 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
 
       if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && userId) {
         userIdRef.current = userId;
+        useStore.getState().setUser({ id: userId, email: session.user.email ?? '' });
 
         try {
           const cloudData = await pullFromCloud(userId);
-          const hasCloudData =
-            cloudData &&
-            (cloudData.friends.length > 0 || cloudData.transactions.length > 0);
-
-          if (hasCloudData) {
-            // Returning user or different device — load their cloud data.
+          if (cloudData) {
             replaceAll(cloudData.friends, cloudData.transactions);
-          } else {
-            // Brand-new account — migrate any existing local data to the cloud.
-            const { friends: localFriends, transactions: localTxns } =
-              useStore.getState();
-            if (localFriends.length > 0 || localTxns.length > 0) {
-              await pushToCloud(localFriends, localTxns, userId);
-            }
           }
-
-          localStorage.setItem('balancio-last-synced', new Date().toISOString());
         } catch (err) {
           console.error('[Balancio] Sync on sign-in failed:', err);
         }
@@ -63,16 +54,22 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
 
       if (event === 'SIGNED_OUT') {
         userIdRef.current = null;
-        // Full reset — the next user (or guest) starts with a clean slate.
-        clearAll();
-        localStorage.removeItem('balancio-last-synced');
+        clearAll(); // Clears Zustand memory (including user)
+        if (pathname !== '/settings') {
+          router.push('/settings');
+        }
+      }
+
+      if (event === 'INITIAL_SESSION' && !userId) {
+        if (pathname !== '/settings') {
+          router.push('/settings');
+        }
       }
     });
 
     return () => subscription.unsubscribe();
-    // replaceAll / clearAll are stable Zustand actions — safe to omit from deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pathname, router]);
 
   // ── Auto-sync mutations to cloud ───────────────────────────────────────────
   useEffect(() => {
@@ -81,11 +78,9 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
 
     const timer = setTimeout(() => {
       const { friends: f, transactions: t } = useStore.getState();
-      pushToCloud(f, t, userId)
-        .then(() =>
-          localStorage.setItem('balancio-last-synced', new Date().toISOString())
-        )
-        .catch((err) => console.error('[Balancio] Auto-sync failed:', err));
+      pushToCloud(f, t, userId).catch((err) =>
+        console.error('[Balancio] Auto-sync failed:', err)
+      );
     }, 2000);
 
     return () => clearTimeout(timer);

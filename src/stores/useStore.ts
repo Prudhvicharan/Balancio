@@ -1,16 +1,11 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Friend, Transaction } from '@/types';
 import { generateId, getTodayISO } from '@/lib/utils';
 
-export interface BackupData {
-  version: number;
-  exportedAt: string;
-  friends: Friend[];
-  transactions: Transaction[];
-}
-
 interface StoreState {
+  user: { id: string; email: string } | null;
+  setUser: (user: { id: string; email: string } | null) => void;
+
   friends: Friend[];
   transactions: Transaction[];
 
@@ -24,18 +19,16 @@ interface StoreState {
   updateTransaction: (id: string, data: Partial<Omit<Transaction, 'id' | 'friendId' | 'createdAt'>>) => void;
   deleteTransaction: (id: string) => void;
 
-  // Backup / sync
-  exportData: () => BackupData;
-  importData: (data: BackupData, mode: 'replace' | 'merge') => void;
   replaceAll: (friends: Friend[], transactions: Transaction[]) => void;
   clearAll: () => void;
 }
 
-export const useStore = create<StoreState>()(
-  persist(
-    (set, get) => ({
-      friends: [],
-      transactions: [],
+export const useStore = create<StoreState>((set) => ({
+  user: null,
+  setUser: (user) => set({ user }),
+
+  friends: [],
+  transactions: [],
 
       addFriend: (data) => {
         const now = new Date().toISOString();
@@ -92,47 +85,11 @@ export const useStore = create<StoreState>()(
         }));
       },
 
-      exportData: () => ({
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        friends: get().friends,
-        transactions: get().transactions,
-      }),
+  replaceAll: (friends, transactions) => {
+    set({ friends, transactions });
+  },
 
-      importData: (data, mode) => {
-        if (mode === 'replace') {
-          set({ friends: data.friends, transactions: data.transactions });
-        } else {
-          // Merge: add records not already present (by ID)
-          set((state) => {
-            const existingFriendIds = new Set(state.friends.map((f) => f.id));
-            const existingTxnIds = new Set(state.transactions.map((t) => t.id));
-            return {
-              friends: [
-                ...state.friends,
-                ...data.friends.filter((f) => !existingFriendIds.has(f.id)),
-              ],
-              transactions: [
-                ...state.transactions,
-                ...data.transactions.filter((t) => !existingTxnIds.has(t.id)),
-              ],
-            };
-          });
-        }
-      },
-
-      replaceAll: (friends, transactions) => {
-        set({ friends, transactions });
-      },
-
-      clearAll: () => {
-        set({ friends: [], transactions: [] });
-      },
-    }),
-    {
-      name: 'balancio-storage',
-      storage: createJSONStorage(() => localStorage),
-    }
-  )
-);
-
+  clearAll: () => {
+    set({ friends: [], transactions: [], user: null });
+  },
+}));
