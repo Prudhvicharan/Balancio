@@ -40,7 +40,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
 
       if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && userId) {
         userIdRef.current = userId;
-        useStore.getState().setUser({ id: userId, email: session.user.email ?? '' });
+        useStore.getState().setUser({ id: userId, email: session?.user?.email ?? '' });
         setAuthLoaded(true);
 
         try {
