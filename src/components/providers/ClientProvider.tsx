@@ -21,7 +21,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const { replaceAll, clearAll } = useStore();
+  const { replaceAll, clearAll, setAuthLoaded } = useStore();
   const friends = useStore((s) => s.friends);
   const transactions = useStore((s) => s.transactions);
 
@@ -41,6 +41,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
       if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && userId) {
         userIdRef.current = userId;
         useStore.getState().setUser({ id: userId, email: session.user.email ?? '' });
+        setAuthLoaded(true);
 
         try {
           const cloudData = await pullFromCloud(userId);
@@ -50,20 +51,20 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
         } catch (err) {
           console.error('[Balancio] Sync on sign-in failed:', err);
         }
+
+        if (event === 'SIGNED_IN' && pathname === '/settings') {
+          router.replace('/');
+        }
       }
 
       if (event === 'SIGNED_OUT') {
         userIdRef.current = null;
         clearAll(); // Clears Zustand memory (including user)
-        if (pathname !== '/settings') {
-          router.push('/settings');
-        }
+        setAuthLoaded(true);
       }
 
       if (event === 'INITIAL_SESSION' && !userId) {
-        if (pathname !== '/settings') {
-          router.push('/settings');
-        }
+        setAuthLoaded(true);
       }
     });
 

@@ -4,7 +4,9 @@ import { generateId, getTodayISO } from '@/lib/utils';
 
 interface StoreState {
   user: { id: string; email: string } | null;
+  authLoaded: boolean;
   setUser: (user: { id: string; email: string } | null) => void;
+  setAuthLoaded: (loaded: boolean) => void;
 
   friends: Friend[];
   transactions: Transaction[];
@@ -25,7 +27,9 @@ interface StoreState {
 
 export const useStore = create<StoreState>((set) => ({
   user: null,
+  authLoaded: false,
   setUser: (user) => set({ user }),
+  setAuthLoaded: (authLoaded) => set({ authLoaded }),
 
   friends: [],
   transactions: [],

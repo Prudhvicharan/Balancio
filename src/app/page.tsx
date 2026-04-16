@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, LayoutDashboard, UserCircle, ArrowUpAZ, Wallet } from 'lucide-react';
+import { Plus, Search, LayoutDashboard, UserCircle, ArrowUpAZ, Wallet, ArrowRight, ShieldCheck, Zap, Cloud } from 'lucide-react';
 import { useStore } from '@/stores/useStore';
 import { computeFriendStats, computeDashboardStats } from '@/lib/utils';
 import { StatsCards } from '@/components/dashboard/StatsCards';
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
 export default function DashboardPage() {
-  const { friends, transactions } = useStore();
+  const { friends, transactions, user, authLoaded } = useStore();
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'balance'>('name');
@@ -43,6 +43,20 @@ export default function DashboardPage() {
   );
 
   const hasData = friends.length > 0;
+
+  // ── Auth Gates ────────────────────────────────────────────────────────────
+
+  if (!authLoaded) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-[var(--bg)]">
+        <div className="w-8 h-8 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LandingPage />;
+  }
 
   return (
     <div className="min-h-dvh flex flex-col max-w-lg mx-auto">
@@ -149,6 +163,84 @@ export default function DashboardPage() {
       </main>
 
       <FriendModal open={addOpen} onClose={() => setAddOpen(false)} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Landing Page for Unauthenticated Users
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LandingPage() {
+  return (
+    <div className="min-h-dvh flex flex-col pt-12 pb-8 px-6 relative overflow-hidden bg-[var(--bg)] z-0">
+      {/* Background decorations */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[rgba(124,106,247,0.15)] blur-[100px] rounded-full pointer-events-none -z-10" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[rgba(52,211,153,0.1)] blur-[100px] rounded-full pointer-events-none -z-10" />
+
+      {/* Header */}
+      <header className="flex justify-between items-center z-10 max-w-lg mx-auto w-full">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shadow-[0_0_15px_rgba(124,106,247,0.4)]">
+            B
+          </div>
+          <span className="font-bold text-xl text-[var(--text-primary)] tracking-tight">Balancio</span>
+        </div>
+        <Link href="/settings">
+          <Button variant="ghost" size="sm" className="font-medium text-[var(--accent-light)] hover:text-[var(--accent)]">
+            Sign In
+          </Button>
+        </Link>
+      </header>
+
+      {/* Hero */}
+      <main className="flex-1 flex flex-col justify-center items-center text-center mt-12 mb-8 z-10 max-w-sm mx-auto">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bg-card)] border border-[var(--border-light)] mb-6 shadow-sm">
+          <span className="w-2 h-2 rounded-full bg-[var(--green)] animate-pulse" />
+          <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Cloud Synchronized</span>
+        </div>
+        
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[var(--text-primary)] leading-[1.1] mb-6">
+          Never lose <br /> track of a <br /> <span className="gradient-text">single cent.</span>
+        </h1>
+        
+        <p className="text-base text-[var(--text-secondary)] mb-10 max-w-xs leading-relaxed">
+          The elegant, zero-friction way to track debts, IOUs, and shared expenses among your friends.
+        </p>
+
+        <Link href="/settings" className="w-full">
+          <Button variant="primary" size="lg" className="w-full h-14 text-base font-semibold shadow-[0_4px_20px_rgba(124,106,247,0.3)] transition-all hover:scale-[1.02]">
+            Get Started Free
+            <ArrowRight className="w-5 h-5 ml-1" />
+          </Button>
+        </Link>
+
+        {/* Feature grid */}
+        <div className="grid grid-cols-2 gap-4 w-full mt-12 text-left">
+          <div className="glass p-4 rounded-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)] to-transparent opacity-0 group-hover:opacity-10 transition-opacity" />
+            <Cloud className="w-6 h-6 text-[var(--accent-light)] mb-3" />
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Backup forever</h3>
+            <p className="text-xs text-[var(--text-muted)]">Data safely tied to your account.</p>
+          </div>
+          <div className="glass p-4 rounded-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-[var(--green)] to-transparent opacity-0 group-hover:opacity-10 transition-opacity" />
+            <ShieldCheck className="w-6 h-6 text-[var(--green)] mb-3" />
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Private & Secure</h3>
+            <p className="text-xs text-[var(--text-muted)]">Nobody else sees your ledger.</p>
+          </div>
+          <div className="glass p-4 rounded-2xl relative overflow-hidden group col-span-2">
+            <div className="absolute inset-0 bg-gradient-to-r from-[rgba(124,106,247,0.2)] to-[rgba(52,211,153,0.1)] opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex items-start gap-4">
+              <Zap className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Hyper-fast interactions</h3>
+                <p className="text-xs text-[var(--text-muted)]">Built specifically to feel like a native app on any device you use.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
