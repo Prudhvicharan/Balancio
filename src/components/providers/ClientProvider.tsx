@@ -41,28 +41,31 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
       if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && userId) {
         userIdRef.current = userId;
         useStore.getState().setUser({ id: userId, email: session?.user?.email ?? '' });
-        // NOTE: Do NOT call setAuthLoaded(true) yet — wait for cloud data to load first.
-        // This keeps the loading spinner showing until we have real data, preventing
-        // the "flash of empty state" on page refresh.
+        // Mark auth as loaded immediately so the UI never hangs on a spinner.
+        // Persisted data (from localStorage via Zustand) is already displayed;
+        // the cloud fetch below will refresh it in the background.
+        setAuthLoaded(true);
 
-        try {
-          const cloudData = await pullFromCloud(userId);
-          if (cloudData && (cloudData.friends.length > 0 || cloudData.transactions.length > 0)) {
-            // Returning user — load their cloud data into the store.
-            replaceAll(cloudData.friends, cloudData.transactions);
-          } else if (!cloudData) {
-            // fetch failed (RLS or network) — log it; store keeps whatever it has
-            console.error('[Balancio] pullFromCloud returned null (RLS/network error)');
+        // Fetch cloud data in the background — with a 10-second timeout so we
+        // never block if Supabase is unreachable.
+        const fetchData = async () => {
+          try {
+            const timeout = new Promise<null>((resolve) =>
+              setTimeout(() => resolve(null), 10_000)
+            );
+            const cloudData = await Promise.race([pullFromCloud(userId), timeout]);
+            if (cloudData && (cloudData.friends.length > 0 || cloudData.transactions.length > 0)) {
+              replaceAll(cloudData.friends, cloudData.transactions);
+            } else if (!cloudData) {
+              console.warn('[Balancio] Cloud fetch timed-out or returned an error.');
+            }
+          } catch (err) {
+            console.error('[Balancio] Sync on sign-in failed:', err);
           }
-          // cloudData = { friends:[], transactions:[] } means brand-new account — store stays empty
-        } catch (err) {
-          console.error('[Balancio] Sync on sign-in failed:', err);
-        } finally {
-          // Always mark auth as loaded AFTER the cloud fetch attempt completes.
-          setAuthLoaded(true);
-        }
+        };
+        fetchData();
 
-        // Redirect to home AFTER data is populated, so the dashboard renders with data.
+        // Redirect to home after login (not on every INITIAL_SESSION).
         if (event === 'SIGNED_IN') {
           router.replace('/');
         }

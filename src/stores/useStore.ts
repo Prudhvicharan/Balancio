@@ -1,4 +1,7 @@
+'use client';
+
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Friend, Transaction } from '@/types';
 import { generateId, getTodayISO } from '@/lib/utils';
 
@@ -25,14 +28,17 @@ interface StoreState {
   clearAll: () => void;
 }
 
-export const useStore = create<StoreState>((set) => ({
-  user: null,
-  authLoaded: false,
-  setUser: (user) => set({ user }),
-  setAuthLoaded: (authLoaded) => set({ authLoaded }),
+export const useStore = create<StoreState>()(
+  persist(
+    (set) => ({
+      // Auth state — NOT persisted (see partialize below), always re-checked on load
+      user: null,
+      authLoaded: false,
+      setUser: (user) => set({ user }),
+      setAuthLoaded: (authLoaded) => set({ authLoaded }),
 
-  friends: [],
-  transactions: [],
+      friends: [],
+      transactions: [],
 
       addFriend: (data) => {
         const now = new Date().toISOString();
@@ -89,11 +95,23 @@ export const useStore = create<StoreState>((set) => ({
         }));
       },
 
-  replaceAll: (friends, transactions) => {
-    set({ friends, transactions });
-  },
+      replaceAll: (friends, transactions) => {
+        set({ friends, transactions });
+      },
 
-  clearAll: () => {
-    set({ friends: [], transactions: [], user: null });
-  },
-}));
+      clearAll: () => {
+        set({ friends: [], transactions: [], user: null });
+      },
+    }),
+    {
+      name: 'balancio-data',     // localStorage key
+      storage: createJSONStorage(() => localStorage),
+      // Only persist data — never persist auth state.
+      // Auth is always re-validated from Supabase on each page load.
+      partialize: (state) => ({
+        friends: state.friends,
+        transactions: state.transactions,
+      }),
+    }
+  )
+);
