@@ -191,7 +191,7 @@ function LandingPage() {
           />
           <span className="font-bold text-xl text-[var(--text-primary)] tracking-tight">Balancio</span>
         </div>
-        <Link href="/settings">
+        <Link href="/settings?mode=signin">
           <Button variant="ghost" size="sm" className="font-medium text-[var(--accent-light)] hover:text-[var(--accent)]">
             Sign In
           </Button>
@@ -213,7 +213,7 @@ function LandingPage() {
           The elegant, zero-friction way to track debts, IOUs, and shared expenses among your friends.
         </p>
 
-        <Link href="/settings" className="w-full">
+        <Link href="/settings?mode=signup" className="w-full">
           <Button variant="primary" size="lg" className="w-full h-14 text-base font-semibold shadow-[0_4px_20px_rgba(124,106,247,0.3)] transition-all hover:scale-[1.02]">
             Get Started Free
             <ArrowRight className="w-5 h-5 ml-1" />

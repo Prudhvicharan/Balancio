@@ -77,11 +77,12 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
     const userId = userIdRef.current;
     if (!userId || !supabase) return;
 
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       const { friends: f, transactions: t } = useStore.getState();
-      pushToCloud(f, t, userId).catch((err) =>
-        console.error('[Balancio] Auto-sync failed:', err)
-      );
+      const res = await pushToCloud(f, t, userId);
+      if (res.error) {
+        console.error('[Balancio] Auto-sync Supabase err:', res.error);
+      }
     }, 2000);
 
     return () => clearTimeout(timer);

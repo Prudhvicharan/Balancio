@@ -104,6 +104,7 @@ type FormScreen = 'form' | 'confirmSignup' | 'confirmReset';
 
 function SettingsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { friends, transactions, replaceAll, user: authUser, authLoaded, clearAll } = useStore();
   const { toast } = useToast();
 
@@ -163,10 +164,12 @@ function SettingsContent() {
         const newFriends = mergedFriends.filter((f) => !cloudFriendIds.has(f.id));
         const newTxns = mergedTxns.filter((t) => !cloudTxnIds.has(t.id));
         if (newFriends.length > 0 || newTxns.length > 0) {
-          await pushToCloud(newFriends, newTxns, uid);
+          const res = await pushToCloud(newFriends, newTxns, uid);
+          if (res.error) throw new Error(res.error);
         }
       } else {
-        await pushToCloud(friends, transactions, uid);
+        const res = await pushToCloud(friends, transactions, uid);
+        if (res.error) throw new Error(res.error);
       }
       const now = new Date().toISOString();
       setLastSynced(now);
@@ -283,6 +286,9 @@ function SettingsContent() {
     }
     
     toast('Signed out');
+    
+    // Redirect cleanly to LandingPage
+    router.replace('/');
   };
 
 
