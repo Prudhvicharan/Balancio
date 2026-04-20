@@ -108,8 +108,10 @@ function SettingsContent() {
   const { friends, transactions, replaceAll, user: authUser, authLoaded, clearAll } = useStore();
   const { toast } = useToast();
 
-  // Auth
-  const [authMode, setAuthMode] = useState<AuthMode>('signin');
+  // Auth — initialize from the ?mode= query param so landing-page links work correctly
+  const [authMode, setAuthMode] = useState<AuthMode>(
+    () => (searchParams.get('mode') === 'signup' ? 'signup' : 'signin')
+  );
   const [formScreen, setFormScreen] = useState<FormScreen>('form');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
