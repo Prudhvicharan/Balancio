@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   LogOut,
@@ -191,8 +191,8 @@ function SettingsContent() {
     setAuthLoading(false);
 
     if (!error) {
-      // onAuthStateChange in ClientProvider handles data loading.
-      // Our local listener above updates authUser.
+      // Immediately bounce the user to the Home Dashboard
+      router.replace('/');
       return;
     }
 
