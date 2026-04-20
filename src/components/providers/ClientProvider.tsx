@@ -41,18 +41,29 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
       if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && userId) {
         userIdRef.current = userId;
         useStore.getState().setUser({ id: userId, email: session?.user?.email ?? '' });
-        setAuthLoaded(true);
+        // NOTE: Do NOT call setAuthLoaded(true) yet — wait for cloud data to load first.
+        // This keeps the loading spinner showing until we have real data, preventing
+        // the "flash of empty state" on page refresh.
 
         try {
           const cloudData = await pullFromCloud(userId);
-          if (cloudData) {
+          if (cloudData && (cloudData.friends.length > 0 || cloudData.transactions.length > 0)) {
+            // Returning user — load their cloud data into the store.
             replaceAll(cloudData.friends, cloudData.transactions);
+          } else if (!cloudData) {
+            // fetch failed (RLS or network) — log it; store keeps whatever it has
+            console.error('[Balancio] pullFromCloud returned null (RLS/network error)');
           }
+          // cloudData = { friends:[], transactions:[] } means brand-new account — store stays empty
         } catch (err) {
           console.error('[Balancio] Sync on sign-in failed:', err);
+        } finally {
+          // Always mark auth as loaded AFTER the cloud fetch attempt completes.
+          setAuthLoaded(true);
         }
 
-        if (event === 'SIGNED_IN' && pathname === '/settings') {
+        // Redirect to home AFTER data is populated, so the dashboard renders with data.
+        if (event === 'SIGNED_IN') {
           router.replace('/');
         }
       }

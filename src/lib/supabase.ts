@@ -175,7 +175,10 @@ export async function pullFromCloud(
     supabase.from('transactions').select('*').eq('user_id', userId),
   ]);
 
-  if (fr.error || tr.error) return null;
+  if (fr.error || tr.error) {
+    console.error('[Balancio] pullFromCloud DB error:', fr.error ?? tr.error);
+    return null;
+  }
 
   const friends: Friend[] = (fr.data ?? []).map((r) => ({
     id: r.id,
