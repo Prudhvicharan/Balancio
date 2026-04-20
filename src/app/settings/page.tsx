@@ -18,6 +18,8 @@ import {
   ArrowRight,
   KeyRound,
   Send,
+  Check,
+  X,
 } from 'lucide-react';
 import { useStore } from '@/stores/useStore';
 import { Button } from '@/components/ui/Button';
@@ -95,7 +97,7 @@ function FormError({ message, onAction, actionLabel }: {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Auth mode types
-type AuthMode = 'signin' | 'signup' | 'forgot';
+type AuthMode = 'signin' | 'signup' | 'forgot' | 'reset';
 
 // "Screen" shown instead of the form
 type FormScreen = 'form' | 'confirmSignup' | 'confirmReset';
@@ -109,14 +111,30 @@ function SettingsContent() {
   const { toast } = useToast();
 
   // Auth — initialize from the ?mode= query param so landing-page links work correctly
-  const [authMode, setAuthMode] = useState<AuthMode>(
-    () => (searchParams.get('mode') === 'signup' ? 'signup' : 'signin')
-  );
+  const [authMode, setAuthMode] = useState<AuthMode>(() => {
+    const m = searchParams.get('mode');
+    return (m === 'signup' || m === 'forgot' || m === 'reset') ? m : 'signin';
+  });
   const [formScreen, setFormScreen] = useState<FormScreen>('form');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Validations
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+  const pwCheck = {
+    length: password.length >= 8,
+    upper: /[A-Z]/.test(password),
+    lower: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+  };
+  const isPasswordValid = Object.values(pwCheck).every(Boolean);
+  const passwordsMatch = password === confirmPassword;
+
   // Sentinel from signIn so we can show "resend" action
   const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
 
@@ -188,6 +206,10 @@ function SettingsContent() {
     setFormError(null);
     setEmailNotConfirmed(false);
     if (!email.trim() || !password) return;
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setFormError('Please enter a valid email address.');
+      return;
+    }
     setAuthLoading(true);
     const { error } = await signIn(email.trim(), password);
     setAuthLoading(false);
@@ -209,11 +231,18 @@ function SettingsContent() {
   // ── Sign Up ────────────────────────────────────────────────────────────────
   const handleSignUp = async () => {
     setFormError(null);
-    if (!email.trim() || !password) return;
+    if (!email.trim() || !password || !confirmPassword) return;
 
-    // Local validation
-    if (password.length < 6) {
-      setFormError('Password must be at least 6 characters.');
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setFormError('Please enter a valid email address.');
+      return;
+    }
+    if (!isPasswordValid) {
+      setFormError('Please meet all password requirements.');
+      return;
+    }
+    if (!passwordsMatch) {
+      setFormError('Passwords do not match.');
       return;
     }
 
@@ -235,8 +264,9 @@ function SettingsContent() {
 
     if (needsConfirmation) {
       setFormScreen('confirmSignup');
+    } else {
+      router.replace('/');
     }
-    // If no confirmation needed (email confirm disabled), ClientProvider handles sign-in.
   };
 
   // ── Forgot Password ────────────────────────────────────────────────────────
@@ -244,6 +274,10 @@ function SettingsContent() {
     setFormError(null);
     if (!email.trim()) {
       setFormError('Please enter your email address.');
+      return;
+    }
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setFormError('Please enter a valid email address.');
       return;
     }
     setAuthLoading(true);
@@ -254,6 +288,32 @@ function SettingsContent() {
       setFormError(error);
     } else {
       setFormScreen('confirmReset');
+    }
+  };
+
+  // ── Reset Password (Save New) ──────────────────────────────────────────────
+  const handleResetPassword = async () => {
+    setFormError(null);
+    if (!password || !confirmPassword) return;
+    
+    if (!isPasswordValid) {
+      setFormError('Please meet all password requirements.');
+      return;
+    }
+    if (!passwordsMatch) {
+      setFormError('Passwords do not match.');
+      return;
+    }
+
+    setAuthLoading(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    setAuthLoading(false);
+
+    if (error) {
+      setFormError(error.message);
+    } else {
+      toast('Password updated successfully!');
+      router.replace('/');
     }
   };
 
@@ -273,6 +333,7 @@ function SettingsContent() {
     if (authMode === 'signin') return handleSignIn();
     if (authMode === 'signup') return handleSignUp();
     if (authMode === 'forgot') return handleForgotPassword();
+    if (authMode === 'reset') return handleResetPassword();
   };
 
   // ── Sign Out ───────────────────────────────────────────────────────────────
@@ -487,7 +548,7 @@ function SettingsContent() {
                   border: '1px solid rgba(124,106,247,0.3)',
                 }}
               >
-                {authMode === 'forgot' ? (
+                {authMode === 'forgot' || authMode === 'reset' ? (
                   <KeyRound className="w-6 h-6 text-[var(--accent-light)]" />
                 ) : (
                   <Cloud className="w-6 h-6 text-[var(--accent-light)]" />
@@ -497,21 +558,23 @@ function SettingsContent() {
                 {authMode === 'signin' && 'Welcome back'}
                 {authMode === 'signup' && 'Create your account'}
                 {authMode === 'forgot' && 'Reset your password'}
+                {authMode === 'reset' && 'Set new password'}
               </h2>
               <p className="text-sm text-[var(--text-secondary)]">
                 {authMode === 'signin' && 'Sign in to access your data on this device.'}
                 {authMode === 'signup' && 'Create an account and your data syncs everywhere automatically.'}
                 {authMode === 'forgot' && "Enter your email and we'll send you a reset link."}
+                {authMode === 'reset' && 'Enter your new password below.'}
               </p>
             </div>
 
             {/* Form card */}
             <div className="glass p-5 space-y-3">
               {/* Mode toggle — only for signin/signup */}
-              {authMode !== 'forgot' && (
+              {authMode !== 'forgot' && authMode !== 'reset' && (
                 <div className="flex gap-1 p-1 bg-[var(--bg-input)] rounded-[var(--radius)]">
                   {(['signin', 'signup'] as const).map((mode) => (
-                    <button
+                     <button
                       key={mode}
                       onClick={() => switchMode(mode)}
                       className={cn(
@@ -527,28 +590,54 @@ function SettingsContent() {
                 </div>
               )}
 
-              {/* Email */}
-              <Input
-                label="Email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setFormError(null); }}
-                leftIcon={<Mail className="w-4 h-4" />}
-                onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
-              />
+              {/* Email — hidden in reset mode */}
+              {authMode !== 'reset' && (
+                <Input
+                  label="Email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setFormError(null); }}
+                  leftIcon={<Mail className="w-4 h-4" />}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
+                />
+              )}
 
               {/* Password — hidden in forgot mode */}
               {authMode !== 'forgot' && (
                 <Input
-                  label="Password"
+                  label={authMode === 'reset' ? 'New Password' : 'Password'}
                   type="password"
-                  placeholder={authMode === 'signup' ? 'At least 6 characters' : 'Your password'}
+                  placeholder={authMode === 'signup' || authMode === 'reset' ? 'Create a secure password' : 'Your password'}
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setFormError(null); }}
                   leftIcon={<Lock className="w-4 h-4" />}
                   onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
                 />
+              )}
+
+              {/* Confirm Password & Requirements — only in signup or reset mode */}
+              {(authMode === 'signup' || authMode === 'reset') && (
+                <>
+                  <Input
+                    label="Confirm Password"
+                    type="password"
+                    placeholder="Repeat your password"
+                    value={confirmPassword}
+                    onChange={(e) => { setConfirmPassword(e.target.value); setFormError(null); }}
+                    leftIcon={<Lock className="w-4 h-4" />}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
+                  />
+                  {/* Dynamic Requirements Checklist */}
+                  <div className="pt-2 space-y-1.5 px-1">
+                    <p className="text-[11px] font-medium text-[var(--text-secondary)] uppercase tracking-wider mb-1">Requirements</p>
+                    <RequirementRow label="At least 8 characters" met={pwCheck.length} />
+                    <RequirementRow label="Uppercase letter" met={pwCheck.upper} />
+                    <RequirementRow label="Lowercase letter" met={pwCheck.lower} />
+                    <RequirementRow label="A number" met={pwCheck.number} />
+                    <RequirementRow label="A special character" met={pwCheck.special} />
+                  </div>
+                </>
               )}
 
               {/* Inline error */}
@@ -567,13 +656,15 @@ function SettingsContent() {
                 onClick={handleAuth}
                 loading={authLoading}
                 disabled={
-                  !email.trim() ||
-                  (authMode !== 'forgot' && !password)
+                  (authMode !== 'reset' && !email.trim()) ||
+                  (authMode !== 'forgot' && !password) ||
+                  ((authMode === 'signup' || authMode === 'reset') && (!isPasswordValid || !passwordsMatch))
                 }
               >
                 {authMode === 'signin' && <><LogIn className="w-4 h-4" /> Sign In</>}
                 {authMode === 'signup' && <><UserPlus className="w-4 h-4" /> Create Account</>}
                 {authMode === 'forgot' && <><Send className="w-4 h-4" /> Send Reset Link</>}
+                {authMode === 'reset' && <><KeyRound className="w-4 h-4" /> Save New Password</>}
               </Button>
 
               {/* Forgot password link — only on sign in */}
@@ -625,5 +716,14 @@ export default function AccountPage() {
     <Suspense>
       <SettingsContent />
     </Suspense>
+  );
+}
+
+function RequirementRow({ label, met }: { label: string; met: boolean }) {
+  return (
+    <div className={cn("flex items-center gap-2 text-xs transition-colors", met ? "text-[var(--green)]" : "text-[var(--text-muted)]")}>
+      {met ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5 opacity-50" />}
+      <span className={met ? "font-medium" : ""}>{label}</span>
+    </div>
   );
 }

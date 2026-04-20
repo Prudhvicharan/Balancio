@@ -65,9 +65,11 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
         };
         fetchData();
 
-        // Redirect to home after login (not on every INITIAL_SESSION).
-        if (event === 'SIGNED_IN') {
-          router.replace('/');
+        // Check if we arrived via a password reset link (hash contains type=recovery)
+        const isRecovery = window.location.hash.includes('type=recovery') || event === 'PASSWORD_RECOVERY';
+
+        if (isRecovery) {
+          router.replace('/settings?mode=reset');
         }
       }
 
