@@ -38,7 +38,7 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       const userId = session?.user?.id ?? null;
 
-      if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && userId) {
+      if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') && userId) {
         userIdRef.current = userId;
         useStore.getState().setUser({ id: userId, email: session?.user?.email ?? '' });
         // Mark auth as loaded immediately so the UI never hangs on a spinner.

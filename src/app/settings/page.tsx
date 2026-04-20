@@ -306,6 +306,11 @@ function SettingsContent() {
     }
 
     setAuthLoading(true);
+    if (!supabase) {
+      setFormError('Database not configured.');
+      setAuthLoading(false);
+      return;
+    }
     const { error } = await supabase.auth.updateUser({ password });
     setAuthLoading(false);
 
